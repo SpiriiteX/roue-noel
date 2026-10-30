@@ -558,11 +558,31 @@ textarea:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
       setTimeout(() => g.disconnect(), 400);
     }
   }
-  $('#music').addEventListener('click', e => {
-    const b = e.currentTarget;
-    if (musicTimer){ stopMusic(); b.textContent = 'Lancer la musique'; b.setAttribute('aria-pressed','false'); }
-    else if (startMusic()){ b.textContent = 'Couper la musique'; b.setAttribute('aria-pressed','true'); }
+  const musicBtn = $('#music');
+  let justUnlocked = false;
+  function setMusicUI(on){
+    musicBtn.textContent = on ? 'Couper la musique' : 'Lancer la musique';
+    musicBtn.setAttribute('aria-pressed', String(on));
+  }
+  musicBtn.addEventListener('click', () => {
+    if (justUnlocked){ justUnlocked = false; setMusicUI(true); return; }
+    if (musicTimer){ stopMusic(); setMusicUI(false); }
+    else if (startMusic()){ setMusicUI(true); }
   });
+
+  // Musique automatique : on la lance dès l'arrivée. Les navigateurs bloquent le son
+  // tant que personne n'a touché la page, donc elle démarre au tout premier toucher.
+  if (startMusic()) setMusicUI(true);
+  const unlockEvents = ['pointerdown', 'touchend', 'keydown', 'click'];
+  function unlock(){
+    if (audio && audio.state === 'suspended'){
+      audio.resume();
+      if (musicTimer) justUnlocked = true;
+      setTimeout(() => { justUnlocked = false; }, 600);
+    }
+    unlockEvents.forEach(ev => document.removeEventListener(ev, unlock, true));
+  }
+  unlockEvents.forEach(ev => document.addEventListener(ev, unlock, true));
 
   /* ---------- Tirage ---------- */
   function segAt(r){
